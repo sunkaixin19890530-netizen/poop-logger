@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getSetting, saveSetting, getAllFriends, addFriend, deleteFriend } from '../utils/db'
+import { getSetting, saveSetting, getAllFriends, addFriend, deleteFriend, addPKRecord, getAllPKRecords, savePKMedal, getAllPKMedals } from '../utils/db'
 import { TOILET_SKINS } from '../utils/constants'
 import { generateFriendCode } from '../utils/share'
 
@@ -11,6 +11,8 @@ export const useUserStore = defineStore('user', () => {
   const unlockedSkins = ref(['default'])
   const currentSkin = ref('default')
   const friends = ref([])
+  const pkHistory = ref([])
+  const pkMedals = ref([])
   const loading = ref(false)
 
   // 初始化
@@ -36,6 +38,10 @@ export const useUserStore = defineStore('user', () => {
 
       // 加载好友
       friends.value = await getAllFriends()
+      
+      // 加载 PK 记录和勋章
+      pkHistory.value = await getAllPKRecords()
+      pkMedals.value = await getAllPKMedals()
     } finally {
       loading.value = false
     }
@@ -100,6 +106,21 @@ export const useUserStore = defineStore('user', () => {
     friends.value = await getAllFriends()
   }
 
+  // 添加 PK 记录
+  async function addNewPKRecord(pkRecord) {
+    await addPKRecord(pkRecord)
+    pkHistory.value = await getAllPKRecords()
+  }
+
+  // 保存 PK 勋章
+  async function saveNewPKMedal(medal) {
+    const existing = pkMedals.value.find(m => m.id === medal.id)
+    if (!existing) {
+      await savePKMedal(medal)
+      pkMedals.value = await getAllPKMedals()
+    }
+  }
+
   return {
     username,
     friendCode,
@@ -109,6 +130,8 @@ export const useUserStore = defineStore('user', () => {
     currentSkinInfo,
     availableSkins,
     friends,
+    pkHistory,
+    pkMedals,
     loading,
     init,
     setUsername,
@@ -116,6 +139,8 @@ export const useUserStore = defineStore('user', () => {
     unlockSkin,
     setCurrentSkin,
     addNewFriend,
-    removeFriend
+    removeFriend,
+    addNewPKRecord,
+    saveNewPKMedal
   }
 })

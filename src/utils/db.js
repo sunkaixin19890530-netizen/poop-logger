@@ -1,9 +1,11 @@
 const DB_NAME = 'poop-logger-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORES = {
   records: 'records',
   friends: 'friends',
-  settings: 'settings'
+  settings: 'settings',
+  pkHistory: 'pkHistory',
+  pkMedals: 'pkMedals'
 }
 
 let db = null
@@ -39,6 +41,7 @@ export function openDB() {
     request.onupgradeneeded = (event) => {
       console.log('数据库升级中...')
       const database = event.target.result
+      const oldVersion = event.oldVersion
 
       // 创建 records store
       if (!database.objectStoreNames.contains(STORES.records)) {
@@ -57,6 +60,22 @@ export function openDB() {
       if (!database.objectStoreNames.contains(STORES.settings)) {
         database.createObjectStore(STORES.settings, { keyPath: 'key' })
         console.log('创建 settings store')
+      }
+
+      // 版本 2 升级：添加 PK 相关 stores
+      if (oldVersion < 2) {
+        // 创建 pkHistory store
+        if (!database.objectStoreNames.contains(STORES.pkHistory)) {
+          const pkHistoryStore = database.createObjectStore(STORES.pkHistory, { keyPath: 'id', autoIncrement: true })
+          pkHistoryStore.createIndex('timestamp', 'timestamp', { unique: false })
+          console.log('创建 pkHistory store')
+        }
+
+        // 创建 pkMedals store
+        if (!database.objectStoreNames.contains(STORES.pkMedals)) {
+          database.createObjectStore(STORES.pkMedals, { keyPath: 'id' })
+          console.log('创建 pkMedals store')
+        }
       }
     }
   })
@@ -291,6 +310,95 @@ export async function exportAllData() {
     friends,
     settings
   }
+}
+
+// 添加 PK 历史记录
+export async function addPKRecord(pkRecord) {
+  await openDB()
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('添加 PK 记录:', pkRecord)
+      const transaction = db.transaction([STORES.pkHistory], 'readwrite')
+      const store = transaction.objectStore(STORES.pkHistory)
+      
+      const { id, ...rest } = pkRecord
+      const recordToAdd = {
+        ...rest,
+        timestamp: pkRecord.timestamp || Date.now()
+      }
+      
+      const request = store.add(recordToAdd)
+      request.onsuccess = (event) => {
+        const newId = event.target.result
+        console.log('PK 记录添加成功，ID:', newId)
+        resolve(newId)
+      }
+      request.onerror = (event) => {
+        console.error('PK 记录添加失败:', event.target.error)
+        reject(event.target.error)
+      }
+    } catch (error) {
+      console.error('添加 PK 记录异常:', error)
+      reject(error)
+    }
+  })
+}
+
+// 获取所有 PK 历史记录
+export async function getAllPKRecords() {
+  await openDB()
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORES.pkHistory], 'readonly')
+      const store = transaction.objectStore(STORES.pkHistory)
+      const request = store.getAll()
+      request.onsuccess = (event) => {
+        const result = event.target.result || []
+        console.log('获取到 PK 记录数:', result.length)
+        result.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        resolve(result)
+      }
+      request.onerror = (event) => {
+        console.error('获取 PK 记录失败:', event.target.error)
+        reject(event.target.error)
+      }
+    } catch (error) {
+      console.error('获取 PK 记录异常:', error)
+      reject(error)
+    }
+  })
+}
+
+// 添加/更新 PK 勋章
+export async function savePKMedal(medal) {
+  await openDB()
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORES.pkMedals], 'readwrite')
+      const store = transaction.objectStore(STORES.pkMedals)
+      const request = store.put(medal)
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+// 获取所有 PK 勋章
+export async function getAllPKMedals() {
+  await openDB()
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORES.pkMedals], 'readonly')
+      const store = transaction.objectStore(STORES.pkMedals)
+      const request = store.getAll()
+      request.onsuccess = () => resolve(request.result || [])
+      request.onerror = () => reject(request.error)
+    } catch (error) {
+      reject(error)
+    }
+  })
 }
 
 // 导入数据
