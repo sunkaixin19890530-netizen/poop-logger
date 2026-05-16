@@ -17,24 +17,34 @@
       </div>
     </div>
 
-    <!-- PK 结果展示 -->
-    <div v-if="pkResult" class="pk-result card">
-      <h2>{{ pkResult.isDraw ? '🤝 平局！' : pkResult.winner === 'me' ? '🎉 胜利！' : '😢 失败...' }}</h2>
-      <div class="pk-dimensions">
-        <div v-for="dim in pkResult.dimensions" :key="dim.name" class="dimension">
-          <span>{{ dim.name }}</span>
-          <span :class="{ winner: dim.winner === 'challenger' }">我：{{ dim.challengerValue }}</span>
-          <span>VS</span>
-          <span :class="{ winner: dim.winner === 'defender' }">对手：{{ dim.defenderValue }}</span>
+    <!-- PK 结果弹窗 -->
+    <div v-if="pkResult" class="pk-overlay" @click.self="clearPKResult">
+      <div class="pk-modal card">
+        <h2 class="pk-verdict">
+          {{ pkResult.isDraw ? '🤝 平局！' : pkResult.winner === 'me' ? '🎉 你赢了！' : '😢 你输了...' }}
+        </h2>
+        <p v-if="pkOpponentName" class="pk-vs">VS {{ pkOpponentName }}</p>
+        <div class="pk-dimensions">
+          <div v-for="dim in pkResult.dimensions" :key="dim.name" class="dimension">
+            <span class="dim-label">{{ dim.name }}</span>
+            <div class="dim-bars">
+              <span class="dim-bar me" :class="{ win: dim.winner === 'challenger' }">
+                我：{{ dim.challengerValue }}
+              </span>
+              <span class="dim-bar opponent" :class="{ win: dim.winner === 'defender' }">
+                对手：{{ dim.defenderValue }}
+              </span>
+            </div>
+          </div>
         </div>
+        <div v-if="pkResult.randomEvent" class="random-event">
+          🎲 {{ pkResult.randomEvent.name }}：{{ pkResult.randomEvent.description }}
+        </div>
+        <div v-if="pkResult.medal" class="medal-earned">
+          🎖️ 获得勋章：{{ pkResult.medal.emoji }} {{ pkResult.medal.name }}
+        </div>
+        <button class="btn btn-primary btn-full" @click="clearPKResult">确定</button>
       </div>
-      <div v-if="pkResult.randomEvent" class="random-event">
-        🎲 {{ pkResult.randomEvent.name }}：{{ pkResult.randomEvent.description }}
-      </div>
-      <div v-if="pkResult.medal" class="medal-earned">
-        🎖️ 获得勋章：{{ pkResult.medal.emoji }} {{ pkResult.medal.name }}
-      </div>
-      <button class="btn btn-primary" @click="clearPKResult">确定</button>
     </div>
 
     <!-- 标签页切换 -->
@@ -184,13 +194,14 @@ const tabs = [
   { id: 'leaderboard', name: '排行榜', emoji: '🏆' }
 ]
 
-const activeTab = ref('lobby')
+const activeTab = ref('friends')
 const taunt = ref('来一场屎命召唤吧！')
 const battleLink = ref('')
 const qrDataUrl = ref('')
 const pendingPK = ref(null)
 const pkResult = ref(null)
 const isProcessing = ref(false)
+const pkOpponentName = ref('')
 const currentOpponent = ref(null)
 
 const friends = computed(() => userStore.friends)
@@ -303,6 +314,8 @@ async function acceptPK() {
     // 运行 PK 引擎
     const result = runPKEngine(myPKStats, challengerPKStats)
 
+    pkOpponentName.value = challenge.payload.taunt?.slice(0, 12) || '神秘挑战者'
+
     const finalResult = {
       ...result,
       winner: result.winner === 'challenger' ? 'me' : result.winner === 'defender' ? 'opponent' : null,
@@ -355,6 +368,7 @@ function declinePK() {
 
 function clearPKResult() {
   pkResult.value = null
+  pkOpponentName.value = ''
 }
 
 async function challengeFriend(friend) {
@@ -379,6 +393,8 @@ async function challengeFriend(friend) {
     }
 
     const result = runPKEngine(myPKStats, friendPKStats)
+
+    pkOpponentName.value = friend.name
 
     const finalResult = {
       ...result,
@@ -451,6 +467,85 @@ function formatPKTime(timestamp) {
   margin-bottom: 15px;
 }
 
+/* PK 弹窗覆盖层 */
+.pk-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.pk-modal {
+  max-width: 400px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  animation: pkPop 0.3s ease-out;
+}
+
+@keyframes pkPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.pk-verdict {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.pk-vs {
+  text-align: center;
+  color: #667eea;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.pk-dimensions {
+  margin-bottom: 15px;
+}
+
+.dimension {
+  margin-bottom: 10px;
+}
+
+.dim-label {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.dim-bars {
+  display: flex;
+  gap: 8px;
+}
+
+.dim-bar {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  background: #f0f0f0;
+}
+
+.dim-bar.me.win { background: #e8f5e9; color: #2e7d32; font-weight: bold; }
+.dim-bar.opponent.win { background: #ffebee; color: #c62828; font-weight: bold; }
+
+.random-event, .medal-earned {
+  text-align: center;
+  padding: 10px;
+  background: #f0f8ff;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
 .challenger-stats {
   display: flex;
   justify-content: space-around;
@@ -461,30 +556,6 @@ function formatPKTime(timestamp) {
   display: flex;
   gap: 10px;
   justify-content: center;
-}
-
-.pk-dimensions {
-  margin-bottom: 15px;
-}
-
-.dimension {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.dimension .winner {
-  color: #667eea;
-  font-weight: bold;
-}
-
-.random-event, .medal-earned {
-  text-align: center;
-  padding: 10px;
-  background: #f0f8ff;
-  border-radius: 8px;
-  margin: 10px 0;
 }
 
 .tabs {
