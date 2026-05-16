@@ -211,22 +211,22 @@ onMounted(async () => {
   checkForPKInURL()
 })
 
-// 监听路由变化
-watch(() => route.hash, () => {
-  checkForPKInURL()
+// 监听路由查询参数变化
+watch(() => route.query.pk, (pk) => {
+  if (pk) handlePKParam(pk)
 })
 
 function checkForPKInURL() {
-  const hash = route.hash
-  const pkMatch = hash.match(/pk=([^&]+)/)
-  if (pkMatch) {
-    const encoded = pkMatch[1]
-    const data = decodeShareData(encoded)
-    if (data && data.type === 'pk_challenge') {
-      pendingPK.value = data
-      // 清除 URL 中的 pk 参数
-      router.replace({ hash: '/friends' })
-    }
+  const pk = route.query.pk
+  if (pk) handlePKParam(pk)
+}
+
+function handlePKParam(encoded) {
+  const data = decodeShareData(encoded)
+  if (data && data.type === 'pk_challenge') {
+    pendingPK.value = data
+    // 清除 URL 中的 pk 参数，保留 friends 路由
+    router.replace({ path: '/friends', query: {} })
   }
 }
 

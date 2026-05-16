@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runPKEngine, generatePKChallenge, encodeShareData, decodeShareData } from '../src/utils/share.js'
+import { runPKEngine, generatePKChallenge, encodeShareData, decodeShareData, generateBattleLink } from '../src/utils/share.js'
 
 describe('PK Engine', () => {
   describe('runPKEngine', () => {
@@ -97,6 +97,26 @@ describe('PK Engine', () => {
       expect(challenge.payload.stats).toEqual(stats)
       expect(challenge.payload.taunt).toBe(taunt)
       expect(challenge.signature).toBeDefined()
+    })
+
+    it('generateBattleLink should produce hash-route-compatible URL', () => {
+      // 在 Node 测试环境中 mock window.location
+      const originalWindow = global.window
+      global.window = { location: { origin: 'http://localhost:3000', pathname: '/poop-logger/' } }
+      
+      const stats = { totalScore: 500, totalRecords: 25 }
+      const pkData = generatePKChallenge(stats, 'Fight me!')
+      const link = generateBattleLink(pkData)
+      
+      // 恢复
+      if (originalWindow === undefined) {
+        delete global.window
+      } else {
+        global.window = originalWindow
+      }
+      
+      // 链接应包含 hash 路由格式：/#/friends?pk=...
+      expect(link).toContain('#/friends?pk=')
     })
   })
 })
