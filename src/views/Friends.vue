@@ -190,6 +190,7 @@ const battleLink = ref('')
 const qrDataUrl = ref('')
 const pendingPK = ref(null)
 const pkResult = ref(null)
+const isProcessing = ref(false)
 const currentOpponent = ref(null)
 
 const friends = computed(() => userStore.friends)
@@ -266,59 +267,86 @@ async function shareAsQR() {
 }
 
 async function acceptPK() {
-  const challengerStats = pendingPK.value.payload.stats
-  const myPKStats = {
-    totalScore: myStats.value.totalScore,
-    totalRecords: myStats.value.totalRecords,
-    longestStreak: myStats.value.maxStreak
+  // 防重复点击
+  if (isProcessing.value) return
+  if (!pendingPK.value) return
+
+  const challenge = pendingPK.value
+  const challengeId = challenge.payload?.challengeId || `${challenge.payload?.timestamp || 0}`
+
+  // 检查是否已处理过同一挑战
+  const alreadyProcessed = pkHistory.value.some(
+    r => r.challengeId === challengeId
+  )
+  if (alreadyProcessed) {
+    pendingPK.value = null
+    alert('已经接受过这个挑战了！')
+    return
   }
-  
-  const challengerPKStats = {
-    totalScore: challengerStats.totalScore,
-    totalRecords: challengerStats.totalRecords,
-    longestStreak: challengerStats.maxStreak
-  }
-  
-  // 运行 PK 引擎（我是 challenger，挑战者是 defender）
-  const result = runPKEngine(myPKStats, challengerPKStats)
-  
-  // 转换结果视角
-  const finalResult = {
-    ...result,
-    winner: result.winner === 'challenger' ? 'me' : result.winner === 'defender' ? 'opponent' : null,
-    isDraw: result.isDraw
-  }
-  
-  pkResult.value = finalResult
-  
-  // 添加到 PK 历史
-  await userStore.addNewPKRecord({
-    opponentName: '神秘挑战者',
-    opponentStats: challengerStats,
-    myStats: myPKStats,
-    result: finalResult,
-    timestamp: Date.now()
-  })
-  
-  // 自动添加为好友
-  const existingFriend = friends.value.find(f => f.friendCode === 'challenger')
-  if (!existingFriend) {
-    await userStore.addNewFriend({
-      id: `friend-${Date.now()}`,
-      name: '神秘挑战者',
-      friendCode: 'challenger',
+
+  isProcessing.value = true
+
+  try {
+    const challengerStats = challenge.payload.stats
+    const myPKStats = {
+      totalScore: myStats.value.totalScore,
+      totalRecords: myStats.value.totalRecords,
+      longestStreak: myStats.value.maxStreak
+    }
+
+    const challengerPKStats = {
       totalScore: challengerStats.totalScore,
       totalRecords: challengerStats.totalRecords,
-      addedAt: Date.now()
+      longestStreak: challengerStats.maxStreak
+    }
+
+    // 运行 PK 引擎
+    const result = runPKEngine(myPKStats, challengerPKStats)
+
+    const finalResult = {
+      ...result,
+      winner: result.winner === 'challenger' ? 'me' : result.winner === 'defender' ? 'opponent' : null,
+      isDraw: result.isDraw
+    }
+
+    pkResult.value = finalResult
+
+    // 添加好友（用 challengeId 去重，而非硬编码 'challenger'）
+    const opponentCode = `pk-${challengeId.slice(0, 6)}`
+    const existingFriend = friends.value.find(f => f.friendCode === opponentCode)
+    if (!existingFriend) {
+      await userStore.addNewFriend({
+        id: `friend-${challengeId}`,
+        name: challenge.payload.taunt?.slice(0, 8) || '神秘挑战者',
+        friendCode: opponentCode,
+        totalScore: challengerStats.totalScore,
+        totalRecords: challengerStats.totalRecords,
+        addedAt: Date.now()
+      })
+    }
+
+    // 添加 PK 记录（带 challengeId 去重）
+    await userStore.addNewPKRecord({
+      challengeId,
+      opponentName: existingFriend?.name || challenge.payload.taunt?.slice(0, 8) || '神秘挑战者',
+      opponentCode,
+      opponentStats: challengerPKStats,
+      myStats: myPKStats,
+      result: finalResult,
+      timestamp: Date.now()
     })
+
+    // 获得勋章
+    if (result.medal) {
+      await userStore.saveNewPKMedal(result.medal)
+    }
+  } catch (e) {
+    console.error('接受 PK 失败:', e)
+    alert('PK 处理出错，请重试')
+  } finally {
+    isProcessing.value = false
+    pendingPK.value = null
   }
-  
-  // 获得勋章
-  if (result.medal) {
-    await userStore.saveNewPKMedal(result.medal)
-  }
-  
-  pendingPK.value = null
 }
 
 function declinePK() {
@@ -330,38 +358,60 @@ function clearPKResult() {
 }
 
 async function challengeFriend(friend) {
-  const myPKStats = {
-    totalScore: myStats.value.totalScore,
-    totalRecords: myStats.value.totalRecords,
-    longestStreak: myStats.value.maxStreak
-  }
-  
-  const friendPKStats = {
-    totalScore: friend.totalScore,
-    totalRecords: friend.totalRecords,
-    longestStreak: 0 // 好友数据可能没有这个字段
-  }
-  
-  const result = runPKEngine(myPKStats, friendPKStats)
-  
-  const finalResult = {
-    ...result,
-    winner: result.winner === 'challenger' ? 'me' : result.winner === 'defender' ? 'opponent' : null,
-    isDraw: result.isDraw
-  }
-  
-  pkResult.value = finalResult
-  
-  await userStore.addNewPKRecord({
-    opponentName: friend.name,
-    opponentStats: friendPKStats,
-    myStats: myPKStats,
-    result: finalResult,
-    timestamp: Date.now()
-  })
-  
-  if (result.medal) {
-    await userStore.saveNewPKMedal(result.medal)
+  // 防重复点击
+  if (isProcessing.value) return
+
+  const challengeId = `cf-${friend.id}-${Date.now()}`
+
+  isProcessing.value = true
+
+  try {
+    const myPKStats = {
+      totalScore: myStats.value.totalScore,
+      totalRecords: myStats.value.totalRecords,
+      longestStreak: myStats.value.maxStreak
+    }
+
+    const friendPKStats = {
+      totalScore: friend.totalScore || 0,
+      totalRecords: friend.totalRecords || 0,
+      longestStreak: friend.longestStreak || 0
+    }
+
+    const result = runPKEngine(myPKStats, friendPKStats)
+
+    const finalResult = {
+      ...result,
+      winner: result.winner === 'challenger' ? 'me' : result.winner === 'defender' ? 'opponent' : null,
+      isDraw: result.isDraw
+    }
+
+    pkResult.value = finalResult
+
+    // 添加 PK 记录
+    const existingRecord = pkHistory.value.some(
+      r => r.challengeId === challengeId
+    )
+    if (!existingRecord) {
+      await userStore.addNewPKRecord({
+        challengeId,
+        opponentName: friend.name,
+        opponentCode: friend.friendCode,
+        opponentStats: friendPKStats,
+        myStats: myPKStats,
+        result: finalResult,
+        timestamp: Date.now()
+      })
+    }
+
+    if (result.medal) {
+      await userStore.saveNewPKMedal(result.medal)
+    }
+  } catch (e) {
+    console.error('挑战好友失败:', e)
+    alert('PK 处理出错，请重试')
+  } finally {
+    isProcessing.value = false
   }
 }
 

@@ -94,6 +94,8 @@ describe('PK Engine', () => {
       const challenge = generatePKChallenge(stats, taunt)
       
       expect(challenge.type).toBe('pk_challenge')
+      expect(challenge.payload.challengeId).toBeDefined()
+      expect(challenge.payload.challengeId.startsWith('pk-')).toBe(true)
       expect(challenge.payload.stats).toEqual(stats)
       expect(challenge.payload.taunt).toBe(taunt)
       expect(challenge.signature).toBeDefined()

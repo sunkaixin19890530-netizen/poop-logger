@@ -111,6 +111,7 @@ export function generatePKChallenge(myStats, taunt = '来一场屎命召唤吧�
   return {
     type: 'pk_challenge',
     payload: {
+      challengeId: `pk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       stats: myStats,
       taunt,
       timestamp: Date.now()
