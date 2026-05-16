@@ -160,7 +160,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useRecordStore } from '../stores/record'
-import { decodeShareData, generatePKChallenge, generateBattleLink, runPKEngine } from '../utils/share'
+import { decodeShareData, generatePKChallenge, generateBattleLink as makeBattleLinkUrl, runPKEngine } from '../utils/share'
 import { formatDate } from '../utils/helpers'
 
 const route = useRoute()
@@ -232,7 +232,7 @@ function checkForPKInURL() {
 
 function createBattleLink() {
   const pkData = generatePKChallenge(myStats.value, taunt.value)
-  battleLink.value = generateBattleLink(pkData)
+  battleLink.value = makeBattleLinkUrl(pkData)
 }
 
 function copyBattleLink() {
