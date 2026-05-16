@@ -178,23 +178,25 @@ poop-logger/
 │   │   ├── Stats.vue        # 统计页
 │   │   ├── Achievements.vue # 成就页
 │   │   ├── Share.vue        # 分享页
-│   │   ├── Friends.vue      # 好友页
+│   │   ├── Friends.vue      # 好友页（屎命召唤 PK）
 │   │   ├── Shop.vue         # 商店页
 │   │   ├── Settings.vue     # 设置页
 │   │   └── Test.vue         # 测试页
 │   ├── stores/              # Pinia 状态管理
 │   │   ├── record.js        # 记录状态
-│   │   └── user.js          # 用户状态
+│   │   └── user.js          # 用户状态（含 PK）
 │   ├── router/              # 路由配置
 │   │   └── index.js
 │   ├── utils/               # 工具函数
 │   │   ├── constants.js     # 常量定义
-│   │   ├── db.js            # IndexedDB 封装
+│   │   ├── db.js            # IndexedDB 封装（v2）
 │   │   ├── helpers.js       # 辅助函数
-│   │   └── share.js         # 分享功能
+│   │   └── share.js         # 分享 + PK 引擎
 │   ├── App.vue              # 根组件
 │   ├── main.js              # 入口文件
 │   └── style.css            # 全局样式
+├── test/                    # 单元测试
+│   └── pkEngine.test.js     # PK 引擎测试
 ├── docs/                    # 文档目录
 ├── index.html               # HTML 模板
 ├── vite.config.js           # Vite 配置
