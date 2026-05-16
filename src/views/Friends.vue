@@ -64,7 +64,13 @@
           <p class="link-display">{{ battleLink }}</p>
           <div class="battle-actions">
             <button class="btn btn-secondary" @click="copyBattleLink">复制链接</button>
-            <button class="btn btn-secondary" @click="shareAsQR">二维码分享</button>
+            <button class="btn btn-secondary" @click="shareAsQR">
+              {{ qrDataUrl ? '收起二维码' : '二维码分享' }}
+            </button>
+          </div>
+          <div v-if="qrDataUrl" class="qr-section">
+            <img :src="qrDataUrl" alt="PK 二维码" class="qr-image" />
+            <p class="qr-hint">扫码即可接受挑战</p>
           </div>
         </div>
       </div>
@@ -158,6 +164,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 import { useUserStore } from '../stores/user'
 import { useRecordStore } from '../stores/record'
 import { decodeShareData, generatePKChallenge, generateBattleLink as makeBattleLinkUrl, runPKEngine } from '../utils/share'
@@ -180,6 +187,7 @@ const tabs = [
 const activeTab = ref('lobby')
 const taunt = ref('来一场屎命召唤吧！')
 const battleLink = ref('')
+const qrDataUrl = ref('')
 const pendingPK = ref(null)
 const pkResult = ref(null)
 const currentOpponent = ref(null)
@@ -240,8 +248,21 @@ function copyBattleLink() {
   alert('战斗链接已复制！')
 }
 
-function shareAsQR() {
-  alert('二维码分享功能开发中...')
+async function shareAsQR() {
+  if (qrDataUrl.value) {
+    qrDataUrl.value = ''
+    return
+  }
+  try {
+    qrDataUrl.value = await QRCode.toDataURL(battleLink.value, {
+      width: 256,
+      margin: 2,
+      color: { dark: '#667eea', light: '#ffffff' }
+    })
+  } catch (e) {
+    console.error('生成二维码失败:', e)
+    alert('生成二维码失败')
+  }
 }
 
 async function acceptPK() {
@@ -501,6 +522,24 @@ function formatPKTime(timestamp) {
 .battle-actions {
   display: flex;
   gap: 10px;
+}
+
+.qr-section {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.qr-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.qr-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #999;
 }
 
 .my-stats {

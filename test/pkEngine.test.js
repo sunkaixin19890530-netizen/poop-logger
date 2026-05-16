@@ -102,7 +102,7 @@ describe('PK Engine', () => {
     it('generateBattleLink should produce hash-route-compatible URL', () => {
       // 在 Node 测试环境中 mock window.location
       const originalWindow = global.window
-      global.window = { location: { origin: 'http://localhost:3000', pathname: '/poop-logger/' } }
+      global.window = { location: { origin: 'http://localhost:3000', pathname: '/poop-logger/', href: 'http://localhost:3000/poop-logger/' } }
       
       const stats = { totalScore: 500, totalRecords: 25 }
       const pkData = generatePKChallenge(stats, 'Fight me!')

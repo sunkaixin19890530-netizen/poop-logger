@@ -135,7 +135,9 @@ export function generatePKResult(challengerStats, defenderStats, result) {
 // 生成战斗链接
 export function generateBattleLink(pkData) {
   const encoded = encodeShareData(pkData)
-  const baseUrl = window.location.origin + window.location.pathname
+  // 去掉当前 URL 已有的 hash 部分，拼接新的 hash 路由
+  const href = (typeof window !== 'undefined' && window.location && window.location.href) || 'http://localhost/'
+  const baseUrl = href.split('#')[0]
   return `${baseUrl}#/friends?pk=${encoded}`
 }
 
