@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拉屎记录器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>💩 拉屎记录器</h1>
+        
+        <div class="form-section">
+            <h2>记录新的一次</h2>
+            <form id="logForm">
+                <div class="form-group">
+                    <label for="date">日期时间</label>
+                    <input type="datetime-local" id="date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quality">状态评分</label>
+                    <select id="quality" required>
+                        <option value="">请选择</option>
+                        <option value="5">🌟 非常顺畅</option>
+                        <option value="4">✨ 比较顺畅</option>
+                        <option value="3">😐 一般</option>
+                        <option value="2">😣 有点困难</option>
+                        <option value="1">💔 非常困难</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">备注（可选）</label>
+                    <textarea id="notes" rows="3" placeholder="比如：饮食情况、身体感受等..."></textarea>
+                </div>
+                
+                <button type="submit">保存记录</button>
+            </form>
+        </div>
+        
+        <div class="records-section">
+            <h2>历史记录</h2>
+            <div id="recordsList"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
